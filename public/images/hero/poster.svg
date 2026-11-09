@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="heroBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f0f23"/>
+    </linearGradient>
+  </defs>
+  <rect fill="url(#heroBg)" width="1920" height="1080"/>
+  <!-- Decorative circles -->
+  <circle cx="200" cy="200" r="150" fill="#e8b44a" opacity="0.08"/>
+  <circle cx="1720" cy="880" r="200" fill="#e8b44a" opacity="0.06"/>
+  <circle cx="960" cy="540" r="300" fill="#e8b44a" opacity="0.03"/>
+  <text x="960" y="480" font-family="system-ui, sans-serif" font-size="72" font-weight="bold" fill="#e8b44a" text-anchor="middle">BARINO</text>
+  <text x="960" y="560" font-family="system-ui, sans-serif" font-size="28" fill="#ffffff" text-anchor="middle" opacity="0.8">Corso Garibaldi, Pavia</text>
+  <text x="960" y="620" font-family="system-ui, sans-serif" font-size="18" fill="#e8b44a" text-anchor="middle">☕ Colazione · 🍽️ Pranzo · 🍷 Aperitivo · 🎵 Eventi</text>
+</svg>
