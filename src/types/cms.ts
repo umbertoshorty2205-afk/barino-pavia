@@ -6,7 +6,7 @@
 export type MenuCategory = 'colazione' | 'pranzo' | 'aperitivo' | 'drink' | 'dolci'
 export type Allergene = 'glutine' | 'lattosio' | 'frutta_guscio' | 'uova' | 'soia'
 export type EventType = 'live' | 'dj' | 'degustazione' | 'altro'
-export type GalleryTag = 'interni' | 'esterni' | 'piatti' | 'eventi' | 'team'
+export type GalleryTag = 'interni' | 'esterni' | 'piatti' | 'eventi' | 'team' | 'colazione' | 'aperitivo' | 'drink' | 'dolci'
 
 export interface MenuItem {
   nome: string
