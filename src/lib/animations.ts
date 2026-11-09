@@ -61,3 +61,24 @@ export const scaleIn: Variants = {
     transition: { duration: 0.3, ease: 'easeOut' },
   },
 }
+
+export const menuIconVariants = {
+  hidden: { rotate: 0 },
+  visible: { rotate: 90 },
+  transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] },
+}
+
+export const closeIconVariants = {
+  hidden: { opacity: 0, rotate: -90, scale: 0.8 },
+  visible: { opacity: 1, rotate: 0, scale: 1 },
+  transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] },
+}
+
+export const navLinkVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+}

@@ -29,6 +29,13 @@ vi.mock('next/image', () => ({
   ),
 }))
 
+// Mock next/link to avoid IntersectionObserver issues
+vi.mock('next/link', () => ({
+  default: ({ children, href, ...props }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}))
+
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
   motion: {
@@ -71,14 +78,18 @@ vi.mock('@supabase/supabase-js', () => ({
 }))
 
 // Global test utilities
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}))
+global.ResizeObserver = class ResizeObserver {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}
 
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}))
+global.IntersectionObserver = class IntersectionObserver {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+  takeRecords = vi.fn()
+  root = null
+  rootMargin = ''
+  thresholds = []
+}

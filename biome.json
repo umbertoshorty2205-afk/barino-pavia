@@ -33,13 +33,15 @@
       },
       "style": {
         "useConst": "error",
-        "useTemplate": "error"
+        "useTemplate": "error",
+        "useImportType": "error"
       },
       "suspicious": {
         "noExplicitAny": "warn"
       },
       "a11y": {
-        "noSvgWithoutTitle": "warn"
+        "noSvgWithoutTitle": "warn",
+        "noLabelWithoutControl": "warn"
       }
     }
   },
