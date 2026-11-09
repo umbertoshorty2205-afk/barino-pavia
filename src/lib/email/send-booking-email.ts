@@ -29,6 +29,36 @@ function createTransporter() {
   })
 }
 
+function createResendTransporter() {
+  if (!process.env.RESEND_API_KEY) {
+    return null
+  }
+  // Resend uses a simple API, we'll use fetch directly
+  return {
+    send: async (options: { from: string; to: string; subject: string; html: string; text: string; attachments?: any[] }) => {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+          attachments: options.attachments,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(`Resend API error: ${response.statusText}`)
+      }
+      return response.json()
+    },
+  }
+}
+
 function generateICS(booking: BookingDetails): string {
   const startDate = new Date(`${booking.bookingDate}T${booking.startTime}`)
   const endDate = new Date(`${booking.bookingDate}T${booking.endTime}`)
@@ -40,7 +70,6 @@ function generateICS(booking: BookingDetails): string {
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Barino Pavia//Booking System//IT',
-    'METHOD:REQUEST',
     `UID:${booking.bookingId}@barino.pavia.it`,
     `DTSTAMP:${formatDate(new Date())}`,
     `DTSTART:${formatDate(startDate)}`,
@@ -55,11 +84,55 @@ function generateICS(booking: BookingDetails): string {
   ].join('\r\n')
 }
 
-export async function sendBookingConfirmationEmail(booking: BookingDetails): Promise<boolean> {
+async function sendEmailWithFallback(mailOptions: any): Promise<boolean> {
+  // Try Nodemailer first (Gmail SMTP)
   try {
     const transporter = createTransporter()
+    await transporter.sendMail(mailOptions)
+    return true
+  } catch (error: any) {
+    console.warn('Nodemailer failed, trying Resend fallback:', error.message)
 
+    // Check if it's a rate limit error (429) or other transient error
+    const isRateLimit = error.code === 'EAUTH' ||
+      error.responseCode === 429 ||
+      error.response?.statusCode === 429 ||
+      error.message?.includes('rate limit') ||
+      error.message?.includes('quota') ||
+      error.message?.includes('Daily user sending quota exceeded')
+
+    if (isRateLimit && process.env.RESEND_API_KEY) {
+      console.log('Rate limit detected, falling back to Resend...')
+      try {
+        const resendTransporter = createResendTransporter()
+        if (resendTransporter) {
+          await resendTransporter.send({
+            from: mailOptions.from,
+            to: mailOptions.to,
+            subject: mailOptions.subject,
+            html: mailOptions.html,
+            text: mailOptions.text,
+            attachments: mailOptions.attachments,
+          })
+          console.log('Email sent via Resend fallback')
+          return true
+        }
+      } catch (resendError) {
+        console.error('Resend fallback also failed:', resendError)
+      }
+    }
+
+    return false
+  }
+}
+
+export async function sendBookingConfirmationEmail(booking: BookingDetails): Promise<boolean> {
+  try {
     const icsContent = generateICS(booking)
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://barino.pavia.it'
+    const confirmUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=confirm`
+    const cancelUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=cancel`
 
     const mailOptions = {
       from: `"Barino Pavia" <${process.env.SMTP_USER}>`,
@@ -117,8 +190,8 @@ export async function sendBookingConfirmationEmail(booking: BookingDetails): Pro
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${booking.confirmUrl}" style="display: inline-block; background: #ed7d1e; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin-right: 10px;">✅ Conferma Prenotazione</a>
-              <a href="${booking.cancelUrl}" style="display: inline-block; background: #e5e5e5; color: #525252; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">❌ Annulla Prenotazione</a>
+              <a href="${confirmUrl}" style="display: inline-block; background: #ed7d1e; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin-right: 10px;">✅ Conferma Prenotazione</a>
+              <a href="${cancelUrl}" style="display: inline-block; background: #e5e5e5; color: #525252; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">❌ Annulla Prenotazione</a>
             </div>
 
             <p style="color: #737373; font-size: 14px; margin-top: 30px;">
@@ -151,8 +224,8 @@ Dettagli:
 ${booking.customerPhone ? `- Telefono: ${booking.customerPhone}` : ''}
 ${booking.notes ? `- Note: ${booking.notes}` : ''}
 
-Conferma: ${booking.confirmUrl}
-Annulla: ${booking.cancelUrl}
+Conferma: ${confirmUrl}
+Annulla: ${cancelUrl}
 
 Promemoria: Riceverai un'email di promemoria 24 ore prima dell'appuntamento.
 
@@ -163,14 +236,13 @@ Corso Giuseppe Garibaldi 18, 27100 Pavia PV
       attachments: [
         {
           filename: `prenotazione-barino-${booking.bookingDate}.ics`,
-          content: icsContent,
+          content: generateICS(booking),
           contentType: 'text/calendar',
         },
       ],
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    return await sendEmailWithFallback(mailOptions)
   } catch (error) {
     console.error('Error sending booking confirmation email:', error)
     return false
@@ -179,7 +251,9 @@ Corso Giuseppe Garibaldi 18, 27100 Pavia PV
 
 export async function sendBookingCancellationEmail(booking: BookingDetails): Promise<boolean> {
   try {
-    const transporter = createTransporter()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://barino.pavia.it'
+    const confirmUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=confirm`
+    const cancelUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=cancel`
 
     const mailOptions = {
       from: `"Barino Pavia" <${process.env.SMTP_USER}>`,
@@ -220,8 +294,7 @@ export async function sendBookingCancellationEmail(booking: BookingDetails): Pro
       `,
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    return await sendEmailWithFallback(mailOptions)
   } catch (error) {
     console.error('Error sending booking cancellation email:', error)
     return false
@@ -230,7 +303,9 @@ export async function sendBookingCancellationEmail(booking: BookingDetails): Pro
 
 export async function sendBookingReminderEmail(booking: BookingDetails): Promise<boolean> {
   try {
-    const transporter = createTransporter()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://barino.pavia.it'
+    const confirmUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=confirm`
+    const cancelUrl = `${siteUrl}/api/bookings/${booking.bookingId}?token=${booking.confirmationToken}&action=cancel`
 
     const mailOptions = {
       from: `"Barino Pavia" <${process.env.SMTP_USER}>`,
@@ -288,8 +363,7 @@ export async function sendBookingReminderEmail(booking: BookingDetails): Promise
       `,
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    return await sendEmailWithFallback(mailOptions)
   } catch (error) {
     console.error('Error sending booking reminder email:', error)
     return false

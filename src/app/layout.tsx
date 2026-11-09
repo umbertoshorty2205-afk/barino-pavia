@@ -26,6 +26,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://barino.pavia.it'),
   title: {
     default: 'Barino Pavia | Caffè, Aperitivi & Eventi in Corso Garibaldi',
     template: '%s | Barino Pavia',
@@ -38,13 +39,6 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
   },
   openGraph: {
     type: 'website',
@@ -68,15 +62,6 @@ export const metadata: Metadata = {
     description: 'Il tuo bar di fiducia a Pavia. Colazione, pranzo veloce, aperitivo con taglieri, cocktail e eventi live.',
     images: ['/images/og-image.jpg'],
   },
-  other: {
-    'geo.region': 'IT-PV',
-    'geo.placename': 'Pavia',
-    'geo.position': '45.1847;9.1582',
-    'ICBM': '45.1847, 9.1582',
-  },
-  verification: {
-    google: 'google-site-verification-code',
-  },
 }
 
 export const viewport: Viewport = {
@@ -95,7 +80,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="it" className={cn('h-full antialiased', inter.variable, outfit.variable, geistMono.variable)}>
+    <html lang="it" suppressHydrationWarning className={cn('h-full antialiased', inter.variable, outfit.variable, geistMono.variable)}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
